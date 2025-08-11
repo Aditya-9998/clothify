@@ -1,9 +1,0 @@
-/* ✅ src/index.css */
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-/* Optional: smooth font & global background color fix */
-body {
-  @apply font-sans text-gray-800 bg-white;
-}

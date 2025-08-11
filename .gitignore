@@ -1,0 +1,7 @@
+# Sab kuch ignore karo
+*
+
+# Sirf clothify folder allow karo
+!clothify/
+!clothify/**
+!.gitignore
