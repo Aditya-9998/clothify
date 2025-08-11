@@ -3,5 +3,6 @@
 
 # Sirf clothify folder allow karo
 !clothify/
+node_modules/
 !clothify/**
 !.gitignore
