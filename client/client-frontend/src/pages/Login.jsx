@@ -1,26 +1,28 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
+import toast from "react-hot-toast"; // ✅ import toast
 
 const Login = () => {
   const { login } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const from = location.state?.from || "/";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setError("");
 
     try {
       await login(email, password);
-      navigate("/"); // ✅ Redirect to home or dashboard
+      toast.success("✅ Logged in successfully!"); // ✅ toast
+      navigate(from, { replace: true });
     } catch (err) {
-      setError("Invalid email or password.");
+      toast.error("❌ Invalid email or password."); // ✅ toast
       console.error(err);
     } finally {
       setLoading(false);
@@ -28,13 +30,11 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4 pt-20">
       <div className="max-w-md w-full bg-white shadow-lg p-8 rounded-lg">
-        <h2 className="text-2xl font-bold mb-6 text-indigo-700 text-center">Login to Your Account</h2>
-
-        {error && (
-          <p className="text-red-500 text-sm mb-4 text-center">{error}</p>
-        )}
+        <h2 className="text-2xl font-bold mb-6 text-indigo-700 text-center">
+          Login to Your Account
+        </h2>
 
         <form onSubmit={handleLogin} className="space-y-4">
           <input
@@ -44,6 +44,7 @@ const Login = () => {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
+            autoComplete="email"
           />
 
           <input
@@ -53,6 +54,7 @@ const Login = () => {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
+            autoComplete="current-password"
           />
 
           <button
@@ -66,9 +68,9 @@ const Login = () => {
 
         <p className="text-center text-sm mt-4">
           Don't have an account?{" "}
-          <a href="/register" className="text-indigo-600 hover:underline">
+          <Link to="/register" className="text-indigo-600 hover:underline">
             Register
-          </a>
+          </Link>
         </p>
       </div>
     </div>

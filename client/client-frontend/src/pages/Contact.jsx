@@ -1,10 +1,22 @@
 // ✅ src/pages/Contact.jsx
-import { addDoc, collection, Timestamp } from "firebase/firestore";
 import { useState } from "react";
+import { addDoc, collection, Timestamp } from "firebase/firestore";
 import { db } from "../firebase";
 
+// 🔹 Local Store Images
+import MumbaiImg from "../assets/Mumbai.png";
+import DelhiImg from "../assets/Delhi.jpg";
+import BangaloreImg from "../assets/Banglore.png";
+
 const Contact = () => {
-  const [form, setForm] = useState({ name: "", email: "", message: "" });
+  const [form, setForm] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    subject: "",
+    message: "",
+  });
   const [status, setStatus] = useState("");
 
   const handleChange = (e) => {
@@ -19,48 +31,193 @@ const Contact = () => {
         ...form,
         timestamp: Timestamp.now(),
       });
-      setForm({ name: "", email: "", message: "" });
+      setForm({
+        firstName: "",
+        lastName: "",
+        email: "",
+        phone: "",
+        subject: "",
+        message: "",
+      });
       setStatus("✅ Message sent successfully!");
-    } catch (err) {
+    } catch (error) {
+      console.error(error);
       setStatus("❌ Failed to send message. Try again.");
     }
   };
 
   return (
-    <div className="flex justify-center items-center min-h-screen bg-gray-100 dark:bg-gray-900 px-4">
-      <div className="bg-white dark:bg-gray-800 p-8 rounded shadow-md w-full max-w-lg">
-        <h2 className="text-2xl font-bold mb-6 text-center text-indigo-700 dark:text-indigo-400">Contact Us</h2>
-        {status && <p className="text-center text-sm mb-4 text-green-600 dark:text-green-400">{status}</p>}
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <input
-            type="text"
-            name="name"
-            value={form.name}
-            onChange={handleChange}
-            placeholder="Your Name"
-            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-black dark:text-white"
-            required
-          />
-          <input
-            type="email"
-            name="email"
-            value={form.email}
-            onChange={handleChange}
-            placeholder="Your Email"
-            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-black dark:text-white"
-            required
-          />
-          <textarea
-            name="message"
-            value={form.message}
-            onChange={handleChange}
-            placeholder="Your Message"
-            rows="5"
-            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-black dark:text-white"
-            required
-          />
-          <button type="submit" className="w-full bg-indigo-600 text-white py-2 rounded hover:bg-indigo-700">Send Message</button>
-        </form>
+    <div className="bg-white">
+      {/* 🔹 Header */}
+      <div className="bg-gradient-to-r from-teal-500 to-blue-600 py-12 text-center text-white">
+        <h2 className="text-4xl font-bold">Contact Us</h2>
+        <p className="mt-2 text-lg">We'd love to hear from you</p>
+      </div>
+
+      {/* 🔹 Form & Info Section */}
+      <div className="max-w-6xl mx-auto py-12 px-6 grid grid-cols-1 md:grid-cols-2 gap-12">
+        {/* Left: Form */}
+        <div>
+          <h3 className="text-xl font-semibold mb-4">Send us a Message</h3>
+          {status && <p className="text-green-600 text-sm mb-4">{status}</p>}
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <input
+                type="text"
+                name="firstName"
+                placeholder="First Name"
+                value={form.firstName}
+                onChange={handleChange}
+                className="w-full border px-3 py-2 rounded"
+                required
+              />
+              <input
+                type="text"
+                name="lastName"
+                placeholder="Last Name"
+                value={form.lastName}
+                onChange={handleChange}
+                className="w-full border px-3 py-2 rounded"
+                required
+              />
+            </div>
+            <input
+              type="email"
+              name="email"
+              placeholder="Email"
+              value={form.email}
+              onChange={handleChange}
+              className="w-full border px-3 py-2 rounded"
+              required
+            />
+            <input
+              type="text"
+              name="phone"
+              placeholder="Phone"
+              value={form.phone}
+              onChange={handleChange}
+              className="w-full border px-3 py-2 rounded"
+            />
+            <select
+              name="subject"
+              value={form.subject}
+              onChange={handleChange}
+              className="w-full border px-3 py-2 rounded"
+              required
+            >
+              <option value="">Select a subject</option>
+              <option value="Order Inquiry">Order Inquiry</option>
+              <option value="Support">Support</option>
+              <option value="Feedback">Feedback</option>
+              <option value="Other">Other</option>
+            </select>
+            <textarea
+              name="message"
+              placeholder="Message"
+              rows="5"
+              value={form.message}
+              onChange={handleChange}
+              className="w-full border px-3 py-2 rounded"
+              required
+            ></textarea>
+            <button
+              type="submit"
+              className="bg-indigo-600 text-white px-6 py-2 rounded hover:bg-indigo-700 transition w-full"
+            >
+              Send Message
+            </button>
+          </form>
+        </div>
+
+        {/* Right: Info */}
+        <div>
+          <h3 className="text-xl font-semibold mb-4">Get in Touch</h3>
+          <ul className="space-y-6 text-gray-700">
+            <li>
+              <strong>📍 Address</strong>
+              <p>
+                123 Fashion Street, Bandra West
+                <br />
+                Mumbai, Maharashtra 400050
+              </p>
+            </li>
+            <li>
+              <strong>📞 Phone</strong>
+              <p>
+                +91 98765 43210
+                <br />
+                +91 98765 43211
+              </p>
+            </li>
+            <li>
+              <strong>✉️ Email</strong>
+              <p>
+                info@clothify.com
+                <br />
+                support@clothify.com
+              </p>
+            </li>
+            <li>
+              <strong>⏰ Business Hours</strong>
+              <p>
+                Mon - Sat: 10:00 AM - 9:00 PM
+                <br />
+                Sunday: 11:00 AM - 7:00 PM
+              </p>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      {/* 🔹 Store Locations */}
+      <div className="bg-gray-50 py-12">
+        <h3 className="text-center text-2xl font-bold mb-8">
+          Our Store Locations
+        </h3>
+        <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8 px-6">
+          <div className="bg-white p-6 rounded shadow text-center">
+            <img
+              src={MumbaiImg}
+              alt="Mumbai Store"
+              className="rounded mb-4 w-full h-40 object-cover"
+            />
+            <h4 className="font-semibold">Mumbai Flagship</h4>
+            <p>
+              123 Fashion Street, Bandra West
+              <br />
+              Mumbai, Maharashtra 400050
+            </p>
+            <p className="text-gray-600">+91 98765 43210</p>
+          </div>
+          <div className="bg-white p-6 rounded shadow text-center">
+            <img
+              src={DelhiImg}
+              alt="Delhi Store"
+              className="rounded mb-4 w-full h-40 object-cover"
+            />
+            <h4 className="font-semibold">Delhi Store</h4>
+            <p>
+              456 Connaught Place
+              <br />
+              New Delhi, Delhi 110001
+            </p>
+            <p className="text-gray-600">+91 98765 43211</p>
+          </div>
+          <div className="bg-white p-6 rounded shadow text-center">
+            <img
+              src={BangaloreImg}
+              alt="Bangalore Store"
+              className="rounded mb-4 w-full h-40 object-cover"
+            />
+            <h4 className="font-semibold">Bangalore Store</h4>
+            <p>
+              789 Brigade Road
+              <br />
+              Bangalore, Karnataka 560025
+            </p>
+            <p className="text-gray-600">+91 98765 43212</p>
+          </div>
+        </div>
       </div>
     </div>
   );

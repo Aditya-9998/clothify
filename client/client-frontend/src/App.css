@@ -1,43 +1,47 @@
+/* App.css */
+
+/* Reset + Global */
 #root {
-  max-width: 1280px;
   margin: 0 auto;
-  padding: 2rem;
+  padding: 0;
+  max-width: 100%;
   text-align: center;
+  font-family: "Poppins", sans-serif;
+  background-color: #f8f9fa;
+  min-height: 100vh;
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
+/* Navbar Shine Text */
+.shine-text {
+  background: linear-gradient(
+    90deg,
+    #ffdd00,
+    #ffffff,
+    #ffdd00
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shine 3s linear infinite;
+  font-weight: bold;
+  font-size: 1.5rem; /* adjust size for navbar */
 }
-.logo:hover {
 
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
-}
-
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
+@keyframes shine {
   to {
-    transform: rotate(360deg);
+    background-position: 200% center;
   }
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
-  }
-}
-
+/* Utility */
 .card {
   padding: 2em;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
 }
 
 .read-the-docs {
   color: #888;
+  font-size: 0.9rem;
 }

@@ -1,6 +1,9 @@
+// ✅ src/App.jsx
 import { Route, Routes } from "react-router-dom";
 import Navbar from "./components/Navbar";
+import Footer from "./components/Footer";
 import ProtectedRoute from "./components/ProtectedRoute";
+import { Toaster } from "react-hot-toast"; // ✅ import toast
 
 // Pages
 import About from "./pages/About";
@@ -23,13 +26,14 @@ import AdminSalesReport from "./pages/AdminSalesReport";
 
 const App = () => {
   return (
-    <div className="min-h-screen bg-white text-black dark:bg-gray-900 dark:text-white transition-all duration-300">
-      {/* Navbar stays fixed for better UX */}
+    <div className="flex flex-col min-h-screen bg-white text-black dark:bg-gray-900 dark:text-white transition-all duration-300">
+      {/* ✅ Navbar fixed at the top */}
       <Navbar />
 
-      <main className="pt-16">
+      {/* ✅ Main Content */}
+      <main className="flex-grow pt-16">
         <Routes>
-          {/* Public Routes */}
+          {/* 🔓 Public Routes */}
           <Route path="/" element={<Home />} />
           <Route path="/about" element={<About />} />
           <Route path="/contact" element={<Contact />} />
@@ -39,7 +43,7 @@ const App = () => {
           <Route path="/product/:id" element={<ProductDetails />} />
           <Route path="/order-confirmation" element={<OrderConfirmation />} />
 
-          {/* Protected User Routes */}
+          {/* 🔒 Protected User Routes */}
           <Route
             path="/cart"
             element={
@@ -73,7 +77,7 @@ const App = () => {
             }
           />
 
-          {/* Admin Protected Routes */}
+          {/* 🔒 Admin Protected Routes */}
           <Route
             path="/admin"
             element={
@@ -100,6 +104,21 @@ const App = () => {
           />
         </Routes>
       </main>
+
+      {/* ✅ Footer always at bottom */}
+      <Footer />
+
+      {/* ✅ Toast Notifications */}
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          style: {
+            background: '#131921',
+            color: '#fff',
+            fontWeight: '500',
+          },
+        }}
+      />
     </div>
   );
 };

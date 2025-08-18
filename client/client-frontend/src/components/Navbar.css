@@ -1,0 +1,20 @@
+/* src/styles/Navbar.css */
+.shine-text {
+  background: linear-gradient(
+    90deg,
+    #ffdd00,
+    #ffffff,
+    #ffdd00
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shine 3s linear infinite;
+  font-weight: bold;
+}
+
+@keyframes shine {
+  to {
+    background-position: 200% center;
+  }
+}

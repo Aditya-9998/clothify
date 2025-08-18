@@ -3,6 +3,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { useCart } from "../contexts/CartContext";
 import { db } from "../firebase";
 import { loadRazorpayScript } from "../utils/loadRazorpay";
+import toast from "react-hot-toast"; // ✅ import toast
 
 const CheckoutButton = () => {
   const { cartItems, clearCart, getTotalAmount } = useCart();
@@ -12,18 +13,18 @@ const CheckoutButton = () => {
   const handlePayment = async () => {
     const res = await loadRazorpayScript();
     if (!res) {
-      alert("Razorpay SDK failed to load.");
+      toast.error("❌ Razorpay SDK failed to load.");
       return;
     }
 
     const options = {
-      key: "rzp_test_jhApF37AU6eIGX", // Your Key ID here
+      key: "rzp_test_jhApF37AU6eIGX",
       currency: "INR",
       amount: amount * 100,
       name: "Clothify",
       description: "Thanks for your order!",
       handler: async function (response) {
-        alert("✅ Payment Successful");
+        toast.success("✅ Payment Successful");
 
         try {
           await addDoc(collection(db, "Orders"), {
@@ -35,10 +36,10 @@ const CheckoutButton = () => {
             timestamp: Timestamp.now(),
           });
 
-          clearCart(); // Empty cart after order
-          alert("📦 Order Saved to Firestore");
+          clearCart();
+          toast.success("📦 Order saved to Firestore!");
         } catch (err) {
-          alert("❌ Failed to save order");
+          toast.error("❌ Failed to save order");
           console.error(err);
         }
       },

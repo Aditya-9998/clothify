@@ -1,3 +1,4 @@
+// src/pages/AdminDashboard.jsx
 import { getAuth } from "firebase/auth";
 import {
   addDoc,
@@ -13,12 +14,15 @@ import toast from "react-hot-toast";
 import EditProduct from "../components/EditProduct";
 import { db, storage } from "../firebase";
 
+const categoriesList = ["Men", "Women", "Kids", "Accessories"];
+
 const AdminDashboard = () => {
   const [products, setProducts] = useState([]);
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
   const [quantity, setQuantity] = useState("");
   const [imageFile, setImageFile] = useState(null);
+  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
 
@@ -43,8 +47,8 @@ const AdminDashboard = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!name.trim() || !price || !quantity) {
-      toast.error("Please fill in all the fields.");
+    if (!name.trim() || !price || !quantity || categories.length === 0) {
+      toast.error("Please fill in all the fields and select category.");
       return;
     }
 
@@ -72,6 +76,7 @@ const AdminDashboard = () => {
         price: parseFloat(price),
         quantity: parseInt(quantity),
         image: imageUrl,
+        categories,
         createdAt: Timestamp.now(),
       });
 
@@ -82,6 +87,7 @@ const AdminDashboard = () => {
       setPrice("");
       setQuantity("");
       setImageFile(null);
+      setCategories([]);
       fetchProducts();
     } catch (err) {
       console.error("Upload error:", err);
@@ -104,6 +110,21 @@ const AdminDashboard = () => {
 
   const handleEdit = (product) => {
     setEditingProduct(product);
+  };
+
+  // Category button click logic
+  const toggleCategory = (cat) => {
+    if (cat === "Kids" || cat === "Accessories") {
+      setCategories([cat]); // single-select
+    } else {
+      // Men/Women multi-select, remove Kids/Accessories if any
+      const newCats = categories.filter((c) => c !== "Kids" && c !== "Accessories");
+      if (categories.includes(cat)) {
+        setCategories(newCats.filter((c) => c !== cat));
+      } else {
+        setCategories([...newCats, cat]);
+      }
+    }
   };
 
   return (
@@ -141,6 +162,31 @@ const AdminDashboard = () => {
           onChange={(e) => setImageFile(e.target.files[0])}
           className="w-full"
         />
+
+        {/* Category Selection */}
+        <div className="mb-2">
+          <h3 className="font-medium mb-1 text-gray-700 dark:text-gray-200">Category</h3>
+          <div className="flex gap-2 flex-wrap">
+            {categoriesList.map((cat) => {
+              const selected = categories.includes(cat);
+              return (
+                <button
+                  key={cat}
+                  type="button"
+                  onClick={() => toggleCategory(cat)}
+                  className={`px-4 py-2 rounded transition ${
+                    selected
+                      ? "bg-indigo-600 text-white"
+                      : "bg-gray-200 dark:bg-gray-700 dark:text-gray-200 hover:bg-gray-300"
+                  }`}
+                >
+                  {cat}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         <button
           type="submit"
           disabled={loading}
@@ -168,6 +214,9 @@ const AdminDashboard = () => {
             <p className="dark:text-gray-300">₹{product.price}</p>
             <p className="text-sm text-gray-600 dark:text-gray-400">
               Qty: {product.quantity}
+            </p>
+            <p className="text-sm mt-1">
+              Categories: {product.categories?.join(", ")}
             </p>
             <div className="mt-2 flex gap-2">
               <button
