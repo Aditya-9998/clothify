@@ -4,6 +4,7 @@ import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 
+// ✅ Firebase Config
 const firebaseConfig = {
   apiKey: "AIzaSyBroSZ_LxVbjsHiv_W4gR2XTA3-ux1xoBs",
   authDomain: "clothify-auth-1765.firebaseapp.com",
@@ -11,9 +12,10 @@ const firebaseConfig = {
   storageBucket: "clothify-auth-1765.firebasestorage.app",
   messagingSenderId: "338860292137",
   appId: "1:338860292137:web:17e201e890c1ad8b7c8438",
-  measurementId: "G-YC6FB3V5NM"
+  measurementId: "G-YC6FB3V5NM",
 };
 
+// ✅ Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
 // ✅ Firebase services
