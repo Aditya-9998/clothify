@@ -1,213 +1,227 @@
-import {
-  addDoc,
-  collection,
-  getDocs,
-  query,
-  serverTimestamp,
-  where,
-} from "firebase/firestore";
-import { useState } from "react";
-import toast from "react-hot-toast";
-import { useNavigate } from "react-router-dom";
+import React, { useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { useCart } from "../contexts/CartContext";
 import { db } from "../firebase";
+import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+import { loadRazorpayScript } from "../utils/loadRazorpayScript";
 
 const Checkout = () => {
-  const { cartItems, clearCart } = useCart();
   const { user } = useAuth();
-  const navigate = useNavigate();
+  const { cartItems, clearCart, totalAmount } = useCart();
 
-  const [formData, setFormData] = useState({ name: "", address: "", phone: "" });
+  const [formData, setFormData] = useState({
+    name: "",
+    address: "",
+    phone: "",
+  });
+
   const [promoCode, setPromoCode] = useState("");
   const [discountPercent, setDiscountPercent] = useState(0);
   const [promoApplied, setPromoApplied] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const totalAmount = cartItems.reduce((total, item) => total + item.price * item.quantity, 0);
   const discountedTotal = totalAmount - (totalAmount * discountPercent) / 100;
 
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+  // Apply promo code
+  const applyPromo = () => {
+    const code = promoCode.trim().toUpperCase();
+    if (code === "DISCOUNT10") {
+      setDiscountPercent(10);
+      setPromoApplied(true);
+    } else if (code === "DISCOUNT20") {
+      setDiscountPercent(20);
+      setPromoApplied(true);
+    } else {
+      alert("❌ Invalid Promo Code");
+    }
   };
 
-  const applyPromoCode = async () => {
-    if (!promoCode) return toast.error("Enter a promo code.");
+  // Handle Razorpay payment
+  const handlePayment = async () => {
+    if (!user) {
+      alert("⚠️ Please log in to checkout.");
+      return;
+    }
+
+    if (!formData.name || !formData.address || !formData.phone) {
+      alert("⚠️ Please fill all fields.");
+      return;
+    }
+
+    if (cartItems.length === 0) {
+      alert("⚠️ Your cart is empty.");
+      return;
+    }
+
+    setLoading(true);
 
     try {
-      const q = query(
-        collection(db, "PromoCodes"),
-        where("code", "==", promoCode.trim()),
-        where("isActive", "==", true)
-      );
-      const snapshot = await getDocs(q);
-
-      if (!snapshot.empty) {
-        const promo = snapshot.docs[0].data();
-        setDiscountPercent(promo.discount);
-        setPromoApplied(true);
-        toast.success(`✅ ${promo.discount}% discount applied!`);
-      } else {
-        setDiscountPercent(0);
-        setPromoApplied(false);
-        toast.error("Invalid or expired promo code.");
+      const sdkLoaded = await loadRazorpayScript();
+      if (!sdkLoaded) {
+        alert("❌ Razorpay SDK failed to load. Are you online?");
+        setLoading(false);
+        return;
       }
-    } catch (err) {
-      console.error("Promo check failed:", err);
-      toast.error("Failed to apply promo code.");
+
+      // 🔹 Step 1: Create order on backend
+      const orderResponse = await fetch("http://localhost:5000/api/create-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount: discountedTotal }), // send amount in rupees
+      });
+
+      const order = await orderResponse.json();
+
+      if (!order.id) {
+        alert("❌ Failed to create order on server.");
+        setLoading(false);
+        return;
+      }
+
+      // 🔹 Step 2: Open Razorpay checkout with order_id
+      const options = {
+        key: import.meta.env.VITE_RAZORPAY_KEY, // only Key_ID here
+        amount: order.amount,
+        currency: order.currency,
+        name: "Clothify",
+        description: "Order Payment",
+        order_id: order.id, // required from backend
+        handler: async (response) => {
+          try {
+            // Save order to Firestore
+            await addDoc(collection(db, "orders"), {
+              uid: user.uid,
+              userEmail: user.email,
+              items: cartItems.map((item) => ({
+                id: item.id,
+                name: item.name,
+                price: item.price,
+                quantity: item.quantity,
+              })),
+              total: parseFloat(discountedTotal.toFixed(2)),
+              customerInfo: formData,
+              promoCode: promoApplied ? promoCode.trim().toUpperCase() : null,
+              discountPercent,
+              createdAt: serverTimestamp(),
+              status: "paid",
+              paymentId: response.razorpay_payment_id,
+              orderId: response.razorpay_order_id,
+              signature: response.razorpay_signature,
+            });
+
+            clearCart();
+            alert("✅ Payment Successful! Order placed.");
+          } catch (err) {
+            console.error("Error saving order:", err);
+            alert("⚠️ Payment succeeded but order save failed!");
+          }
+        },
+        prefill: {
+          name: formData.name,
+          email: user.email,
+          contact: formData.phone,
+        },
+        theme: { color: "#3399cc" },
+      };
+
+      const rzp = new window.Razorpay(options);
+      rzp.open();
+    } catch (error) {
+      console.error("Payment Error:", error);
+      alert("❌ Something went wrong during payment!");
+    } finally {
+      setLoading(false);
     }
-  };
-
-  const loadRazorpayScript = () => {
-    return new Promise((resolve) => {
-      const script = document.createElement("script");
-      script.src = "https://checkout.razorpay.com/v1/checkout.js";
-      script.onload = () => resolve(true);
-      script.onerror = () => resolve(false);
-      document.body.appendChild(script);
-    });
-  };
-
-  const handlePayment = async (e) => {
-    e.preventDefault();
-
-    if (!user) {
-      toast.error("Please login to place an order.");
-      return navigate("/login");
-    }
-
-    const isLoaded = await loadRazorpayScript();
-    if (!isLoaded) return toast.error("Razorpay SDK failed to load.");
-
-    const options = {
-      key: "rzp_test_jhApF37AU6eIGX", // ✅ Test Key
-      amount: Math.round(discountedTotal * 100), // in paisa
-      currency: "INR",
-      name: "Clothify Store",
-      description: "Order Payment",
-      image: "/logo.png",
-      handler: async function (response) {
-        try {
-          await addDoc(collection(db, "Orders"), {
-            userEmail: user.email,
-            items: cartItems,
-            total: parseFloat(discountedTotal.toFixed(2)),
-            customerInfo: formData,
-            promoCode: promoApplied ? promoCode.trim() : null,
-            discountPercent,
-            createdAt: serverTimestamp(),
-            status: "paid",
-            paymentId: response.razorpay_payment_id,
-          });
-
-          toast.success("✅ Order placed and payment successful!");
-          clearCart();
-          navigate("/order-confirmation");
-        } catch (err) {
-          console.error("Order saving failed:", err);
-          toast.error("Payment successful but order save failed.");
-        }
-      },
-      prefill: {
-        name: formData.name,
-        email: user.email,
-        contact: formData.phone,
-      },
-      theme: {
-        color: "#6366F1",
-      },
-    };
-
-    const paymentObject = new window.Razorpay(options);
-    paymentObject.open();
   };
 
   return (
-    <div className="min-h-screen flex justify-center items-center bg-gray-100 p-4 dark:bg-gray-900">
-      <div className="bg-white dark:bg-gray-800 p-6 rounded shadow-md w-full max-w-md">
-        <h2 className="text-2xl font-bold mb-6 text-center text-indigo-700 dark:text-white">
-          Checkout
-        </h2>
+    <div className="p-6 max-w-lg mx-auto bg-white rounded-lg shadow-md">
+      <h2 className="text-2xl font-bold mb-6 text-center">Checkout</h2>
 
-        <form onSubmit={handlePayment} className="space-y-5">
-          <div className="flex flex-col">
-            <label className="mb-1 font-semibold dark:text-gray-300">Full Name</label>
-            <input
-              type="text"
-              name="name"
-              placeholder="Full Name"
-              value={formData.name}
-              onChange={handleChange}
-              required
-              className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
-          </div>
+      {/* Form */}
+      <form className="space-y-4">
+        <input
+          type="text"
+          placeholder="Full Name"
+          className="w-full border px-3 py-2 rounded"
+          value={formData.name}
+          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+        />
+        <input
+          type="text"
+          placeholder="Address"
+          className="w-full border px-3 py-2 rounded"
+          value={formData.address}
+          onChange={(e) =>
+            setFormData({ ...formData, address: e.target.value })
+          }
+        />
+        <input
+          type="text"
+          placeholder="Phone"
+          className="w-full border px-3 py-2 rounded"
+          value={formData.phone}
+          onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+        />
+      </form>
 
-          <div className="flex flex-col">
-            <label className="mb-1 font-semibold dark:text-gray-300">Shipping Address</label>
-            <input
-              type="text"
-              name="address"
-              placeholder="Shipping Address"
-              value={formData.address}
-              onChange={handleChange}
-              required
-              className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
-          </div>
-
-          <div className="flex flex-col">
-            <label className="mb-1 font-semibold dark:text-gray-300">Phone Number</label>
-            <input
-              type="tel"
-              name="phone"
-              placeholder="Phone Number"
-              value={formData.phone}
-              onChange={handleChange}
-              required
-              className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
-          </div>
-
-          <div className="flex flex-col">
-            <label className="mb-1 font-semibold dark:text-gray-300">Promo Code</label>
-            <div className="flex space-x-2">
-              <input
-                type="text"
-                value={promoCode}
-                onChange={(e) => setPromoCode(e.target.value)}
-                placeholder="Enter promo code"
-                className="flex-1 px-4 py-2 border border-gray-300 rounded"
-              />
-              <button
-                type="button"
-                onClick={applyPromoCode}
-                className="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 transition"
-              >
-                Apply
-              </button>
-            </div>
-          </div>
-
-          <div className="text-right text-lg font-semibold dark:text-white">
-            Total: ₹{totalAmount}
-            {discountPercent > 0 && (
-              <>
-                <p className="text-sm text-green-600">Discount: -{discountPercent}%</p>
-                <p className="text-xl text-indigo-700 font-bold">
-                  Final: ₹{discountedTotal.toFixed(2)}
-                </p>
-              </>
-            )}
-          </div>
-
-          <button
-            type="submit"
-            className="w-full bg-indigo-600 text-white py-2 rounded hover:bg-indigo-700 transition"
-          >
-            Pay & Place Order
-          </button>
-        </form>
+      {/* Promo Code */}
+      <div className="mt-4 flex gap-2">
+        <input
+          type="text"
+          placeholder="Promo Code"
+          className="flex-1 border px-3 py-2 rounded"
+          value={promoCode}
+          onChange={(e) => setPromoCode(e.target.value)}
+          disabled={promoApplied}
+        />
+        <button
+          type="button"
+          className={`px-4 py-2 rounded ${promoApplied
+              ? "bg-gray-400 cursor-not-allowed"
+              : "bg-green-600 text-white hover:bg-green-700"
+            }`}
+          onClick={applyPromo}
+          disabled={promoApplied}
+        >
+          {promoApplied ? "Applied" : "Apply"}
+        </button>
       </div>
+
+      {/* Order Summary */}
+      <div className="mt-6 p-4 border rounded bg-gray-50">
+        <h3 className="text-lg font-semibold mb-2">Order Summary</h3>
+        {cartItems.length > 0 ? (
+          <ul className="space-y-2">
+            {cartItems.map((item) => (
+              <li key={item.id} className="flex justify-between">
+                <span>
+                  {item.name} x {item.quantity}
+                </span>
+                <span>₹{(item.price * item.quantity).toFixed(2)}</span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-gray-500">Your cart is empty.</p>
+        )}
+        <div className="mt-4 font-bold text-lg">
+          Total: ₹{discountedTotal.toFixed(2)}
+          {promoApplied && (
+            <span className="ml-2 text-green-600">(Promo Applied)</span>
+          )}
+        </div>
+      </div>
+
+      {/* Pay Now Button */}
+      <button
+        type="button"
+        className="w-full mt-6 bg-blue-600 text-white px-4 py-3 rounded hover:bg-blue-700"
+        onClick={handlePayment}
+        disabled={loading || cartItems.length === 0}
+      >
+        {loading ? "Processing..." : "Pay Now"}
+      </button>
     </div>
   );
 };

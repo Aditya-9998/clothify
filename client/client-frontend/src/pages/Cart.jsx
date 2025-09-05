@@ -3,7 +3,9 @@ import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { useAuth } from "../contexts/AuthContext";
 import { useCart } from "../contexts/CartContext";
 import { db } from "../firebase";
-import { loadRazorpayScript } from "../utils/razorpay";
+import { loadRazorpayScript } from "../utils/loadRazorpayScript";
+
+
 
 const Cart = () => {
   const { cartItems, removeFromCart, clearCart } = useCart();
@@ -15,6 +17,11 @@ const Cart = () => {
   );
 
   const handlePayment = async () => {
+    if (!currentUser) {
+      alert("Please login to place an order.");
+      return;
+    }
+
     const res = await loadRazorpayScript();
     if (!res) {
       alert("❌ Razorpay SDK failed to load.");
@@ -22,7 +29,7 @@ const Cart = () => {
     }
 
     const options = {
-      key: "rzp_test_jhApF37AU6eIGX",
+      key: import.meta.env.VITE_RAZORPAY_KEY,
       amount: totalAmount * 100,
       currency: "INR",
       name: "Clothify Store",
@@ -30,9 +37,10 @@ const Cart = () => {
       image: "/logo.png",
       handler: async function (response) {
         try {
-          const orderRef = collection(db, "Orders");
+          const orderRef = collection(db, "orders"); // ✅ lowercase
           await addDoc(orderRef, {
-            userEmail: currentUser?.email || "Guest",
+            uid: currentUser.uid, // ✅ required for rules
+            userEmail: currentUser.email,
             items: cartItems,
             total: totalAmount,
             paymentId: response.razorpay_payment_id,
@@ -47,8 +55,8 @@ const Cart = () => {
         }
       },
       prefill: {
-        name: currentUser?.displayName || "Aditya Kumar",
-        email: currentUser?.email || "onlygamingid.9798@gmail.com",
+        name: currentUser.displayName || "Aditya Kumar",
+        email: currentUser.email,
         contact: "7520506901",
       },
       theme: {

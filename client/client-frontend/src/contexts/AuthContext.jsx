@@ -1,15 +1,18 @@
+// ✅ src/contexts/AuthContext.jsx
 import { createContext, useContext, useEffect, useState } from "react";
-import { auth, db } from "../firebase";
+import { auth, db } from "../firebase.js";
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut,
   onAuthStateChanged,
   updateProfile,
+  getIdTokenResult,
 } from "firebase/auth";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 
 const AuthContext = createContext();
+
 export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider = ({ children }) => {
@@ -17,24 +20,38 @@ export const AuthProvider = ({ children }) => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // Firebase state listener
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
-        // Firestore me user ka doc fetch karo
-        const snap = await getDoc(doc(db, "users", firebaseUser.uid));
-        const data = snap.exists() ? snap.data() : null;
+        try {
+          const userDocRef = doc(db, "users", firebaseUser.uid);
+          const userDocSnap = await getDoc(userDocRef);
 
-        // Merge Firebase Auth + Firestore data
-        const mergedUser = {
-          uid: firebaseUser.uid,
-          email: firebaseUser.email,
-          displayName: data?.displayName || firebaseUser.displayName || "",
-          role: data?.role || "user",
-        };
+          if (userDocSnap.exists()) {
+            const firestoreData = userDocSnap.data();
 
-        setUser(mergedUser);
-        setIsAdmin(mergedUser.role === "admin");
+            // ✅ Check both: custom claim & Firestore role
+            const tokenResult = await getIdTokenResult(firebaseUser, true);
+            const isAdminClaim = tokenResult.claims?.admin || false;
+            const isAdminRole = firestoreData.role === "admin";
+            const finalIsAdmin = isAdminClaim || isAdminRole;
+
+            const mergedUser = {
+              uid: firebaseUser.uid,
+              email: firebaseUser.email,
+              displayName:
+                firestoreData.displayName ||
+                firebaseUser.displayName ||
+                "",
+              role: finalIsAdmin ? "admin" : firestoreData.role || "user",
+            };
+
+            setUser(mergedUser);
+            setIsAdmin(finalIsAdmin);
+          }
+        } catch (error) {
+          console.error("Error fetching user data:", error);
+        }
       } else {
         setUser(null);
         setIsAdmin(false);
@@ -42,74 +59,63 @@ export const AuthProvider = ({ children }) => {
       setLoading(false);
     });
 
-    return unsub;
+    return () => unsubscribe();
   }, []);
 
-  // 🔹 Register function
+  // ✅ Register user
   const register = async (email, password, name) => {
-    const res = await createUserWithEmailAndPassword(auth, email, password);
+    const userCredential = await createUserWithEmailAndPassword(
+      auth,
+      email,
+      password
+    );
+    const newUser = userCredential.user;
 
-    // Update Firebase Auth profile
     if (name?.trim()) {
-      await updateProfile(res.user, { displayName: name.trim() });
+      await updateProfile(newUser, { displayName: name.trim() });
     }
 
-    // Save user data to Firestore
-    await setDoc(
-      doc(db, "users", res.user.uid),
-      {
-        uid: res.user.uid,
-        email: res.user.email,
-        displayName: name || res.user.displayName || "",
-        role: "user",
-        createdAt: new Date(),
-      },
-      { merge: true }
-    );
-
-    // Update state immediately
-    setUser({
-      uid: res.user.uid,
-      email: res.user.email,
-      displayName: name || res.user.displayName,
+    const userDocData = {
+      uid: newUser.uid,
+      email: newUser.email,
+      displayName: name || newUser.displayName || "",
       role: "user",
-    });
-
-    return res;
-  };
-
-  // 🔹 Login function (no need name)
-  const login = async (email, password) => {
-    const res = await signInWithEmailAndPassword(auth, email, password);
-
-    // Firestore se user ka name fetch
-    const snap = await getDoc(doc(db, "users", res.user.uid));
-    const data = snap.exists() ? snap.data() : {};
-
-    const mergedUser = {
-      uid: res.user.uid,
-      email: res.user.email,
-      displayName: data?.displayName || res.user.displayName || "",
-      role: data?.role || "user",
+      createdAt: new Date(),
     };
 
-    setUser(mergedUser);
-    setIsAdmin(mergedUser.role === "admin");
+    await setDoc(doc(db, "users", newUser.uid), userDocData);
 
-    return res;
-  };
-
-  // 🔹 Logout
-  const logout = async () => {
-    await signOut(auth);
-    setUser(null);
+    // ✅ Ensure context updates immediately
+    setUser(userDocData);
     setIsAdmin(false);
+
+    return userCredential;
   };
 
-  const value = { user, isAdmin, loading, register, login, logout };
+  // ✅ Login user
+  const login = (email, password) => signInWithEmailAndPassword(auth, email, password);
+
+  // ✅ Logout user
+  const logout = () => signOut(auth);
+
+  const value = {
+    user,
+    isAdmin,
+    loading,
+    register,
+    login,
+    logout,
+  };
+
   return (
     <AuthContext.Provider value={value}>
-      {!loading && children}
+      {loading ? (
+        <div className="flex items-center justify-center min-h-screen bg-gray-900 text-white">
+          <p className="text-lg">Checking session...</p>
+        </div>
+      ) : (
+        children
+      )}
     </AuthContext.Provider>
   );
 };

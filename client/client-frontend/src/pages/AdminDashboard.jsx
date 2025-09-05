@@ -28,6 +28,7 @@ const AdminDashboard = () => {
 
   const fetchProducts = async () => {
     try {
+      // ✅ FIX: Correct collection name "Products"
       const snapshot = await getDocs(collection(db, "Products"));
       const data = snapshot.docs.map((doc) => ({
         id: doc.id,
@@ -71,6 +72,7 @@ const AdminDashboard = () => {
         imageUrl = await getDownloadURL(imageRef);
       }
 
+      // ✅ FIX: Save inside "Products"
       await addDoc(collection(db, "Products"), {
         name: name.trim(),
         price: parseFloat(price),
@@ -81,8 +83,6 @@ const AdminDashboard = () => {
       });
 
       toast.success("✅ Product added successfully!");
-
-      // Reset form
       setName("");
       setPrice("");
       setQuantity("");
@@ -99,6 +99,7 @@ const AdminDashboard = () => {
 
   const handleDelete = async (id) => {
     try {
+      // ✅ FIX: Delete from "Products"
       await deleteDoc(doc(db, "Products", id));
       toast.success("🗑️ Product deleted.");
       fetchProducts();
@@ -112,12 +113,10 @@ const AdminDashboard = () => {
     setEditingProduct(product);
   };
 
-  // Category button click logic
   const toggleCategory = (cat) => {
     if (cat === "Kids" || cat === "Accessories") {
-      setCategories([cat]); // single-select
+      setCategories([cat]);
     } else {
-      // Men/Women multi-select, remove Kids/Accessories if any
       const newCats = categories.filter((c) => c !== "Kids" && c !== "Accessories");
       if (categories.includes(cat)) {
         setCategories(newCats.filter((c) => c !== cat));
@@ -133,7 +132,7 @@ const AdminDashboard = () => {
         Admin Dashboard
       </h2>
 
-      {/* Add Product */}
+      {/* Add Product Form */}
       <form onSubmit={handleSubmit} className="space-y-4 mb-8 max-w-md">
         <input
           type="text"
@@ -167,23 +166,20 @@ const AdminDashboard = () => {
         <div className="mb-2">
           <h3 className="font-medium mb-1 text-gray-700 dark:text-gray-200">Category</h3>
           <div className="flex gap-2 flex-wrap">
-            {categoriesList.map((cat) => {
-              const selected = categories.includes(cat);
-              return (
-                <button
-                  key={cat}
-                  type="button"
-                  onClick={() => toggleCategory(cat)}
-                  className={`px-4 py-2 rounded transition ${
-                    selected
-                      ? "bg-indigo-600 text-white"
-                      : "bg-gray-200 dark:bg-gray-700 dark:text-gray-200 hover:bg-gray-300"
-                  }`}
-                >
-                  {cat}
-                </button>
-              );
-            })}
+            {categoriesList.map((cat) => (
+              <button
+                key={cat}
+                type="button"
+                onClick={() => toggleCategory(cat)}
+                className={`px-4 py-2 rounded transition ${
+                  categories.includes(cat)
+                    ? "bg-indigo-600 text-white"
+                    : "bg-gray-200 dark:bg-gray-700 dark:text-gray-200 hover:bg-gray-300"
+                }`}
+              >
+                {cat}
+              </button>
+            ))}
           </div>
         </div>
 

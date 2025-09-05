@@ -1,9 +1,10 @@
+// src/components/Navbar.jsx
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ShoppingCart, Menu, X, Moon, Sun } from "lucide-react";
+import { ShoppingCart, Menu, X, Moon, Sun, Heart } from "lucide-react"; // ❤️ Heart icon added
 import { useAuth } from "../contexts/AuthContext";
 import { useCart } from "../contexts/CartContext";
-import "./Navbar.css";   // ✅ correct path
+import "./Navbar.css";
 
 const Navbar = ({ toggleTheme, isDark }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -13,7 +14,6 @@ const Navbar = ({ toggleTheme, isDark }) => {
   const { user, logout, isAdmin } = useAuth();
   const { cartItemCount, cartItems = [] } = useCart();
 
-  // ✅ Fallback in case cartItemCount is not provided
   const count =
     typeof cartItemCount === "number"
       ? cartItemCount
@@ -39,7 +39,7 @@ const Navbar = ({ toggleTheme, isDark }) => {
     <nav className="bg-[#131921] text-white shadow-md fixed w-full top-0 left-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16 items-center">
-          {/* Logo with Shine */}
+          {/* Logo */}
           <Link to="/" className="nav-logo shine-text text-2xl font-bold">
             Clothify✨
           </Link>
@@ -70,7 +70,7 @@ const Navbar = ({ toggleTheme, isDark }) => {
                   Hey, {user.displayName || user.email}
                 </button>
                 {dropdownOpen && (
-                  <div className="absolute right-0 mt-2 w-40 bg-[#232f3e] text-white shadow-lg rounded-lg overflow-hidden">
+                  <div className="absolute right-0 mt-2 w-44 bg-[#232f3e] text-white shadow-lg rounded-lg overflow-hidden">
                     <button
                       onClick={() => {
                         navigate("/profile");
@@ -79,6 +79,15 @@ const Navbar = ({ toggleTheme, isDark }) => {
                       className="block w-full text-left px-4 py-2 hover:bg-yellow-400 hover:text-black"
                     >
                       Profile
+                    </button>
+                    <button
+                      onClick={() => {
+                        navigate("/wishlist");
+                        setDropdownOpen(false);
+                      }}
+                      className="block w-full text-left px-4 py-2 hover:bg-pink-400 hover:text-black"
+                    >
+                      ❤️ Wishlist
                     </button>
                     <button
                       onClick={handleLogout}
@@ -154,6 +163,15 @@ const Navbar = ({ toggleTheme, isDark }) => {
                   className="block w-full text-left hover:text-yellow-300"
                 >
                   Profile
+                </button>
+                <button
+                  onClick={() => {
+                    navigate("/wishlist");
+                    setIsOpen(false);
+                  }}
+                  className="block w-full text-left hover:text-pink-400"
+                >
+                  ❤️ Wishlist
                 </button>
                 <button
                   onClick={handleLogout}

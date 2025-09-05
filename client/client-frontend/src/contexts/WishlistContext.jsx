@@ -1,28 +1,19 @@
-// contexts/WishlistContext.jsx
-import {
-    addDoc,
-    collection,
-    deleteDoc,
-    doc,
-    getDocs,
-    onSnapshot,
-    query,
-    where,
-} from "firebase/firestore";
 import { createContext, useContext, useEffect, useState } from "react";
 import { db } from "../firebase";
 import { useAuth } from "./AuthContext";
+import { collection, doc, onSnapshot, setDoc, deleteDoc } from "firebase/firestore";
 
+// Create context
 const WishlistContext = createContext();
 
-export function useWishlist() {
-  return useContext(WishlistContext);
-}
+// Hook to use Wishlist
+export const useWishlist = () => useContext(WishlistContext);
 
 export const WishlistProvider = ({ children }) => {
   const { user } = useAuth();
   const [wishlist, setWishlist] = useState([]);
 
+  // Fetch wishlist in real-time
   useEffect(() => {
     if (!user) {
       setWishlist([]);
@@ -32,46 +23,43 @@ export const WishlistProvider = ({ children }) => {
     const wishlistRef = collection(db, "users", user.uid, "wishlist");
 
     const unsubscribe = onSnapshot(wishlistRef, (snapshot) => {
-      const data = snapshot.docs.map(doc => ({
+      const items = snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
-        docId: doc.id, // Store Firestore doc ID
       }));
-      setWishlist(data);
+      setWishlist(items);
     });
 
-    return unsubscribe;
+    return () => unsubscribe();
   }, [user]);
 
-  const addToWishlist = async (product) => {
-    if (!user) return alert("Login required");
-    const wishlistRef = collection(db, "users", user.uid, "wishlist");
+  // Toggle wishlist item (add/remove)
+  const toggleWishlist = async (item) => {
+    if (!user) {
+      alert("Please login to manage wishlist");
+      return;
+    }
 
-    const existing = await getDocs(
-      query(wishlistRef, where("id", "==", product.id))
-    );
-    if (!existing.empty) return alert("Already in wishlist");
+    const itemRef = doc(db, "users", user.uid, "wishlist", item.id.toString());
+    const exists = wishlist.find((w) => w.id === item.id);
 
-    await addDoc(wishlistRef, product);
+    if (exists) {
+      await deleteDoc(itemRef);
+    } else {
+      await setDoc(itemRef, {
+        name: item.name,
+        price: item.price,
+        image: item.image,
+        createdAt: new Date(),
+      });
+    }
   };
 
-  const removeFromWishlist = async (productId) => {
-    const ref = collection(db, "users", user.uid, "wishlist");
-    const existing = await getDocs(query(ref, where("id", "==", productId)));
-
-    existing.forEach(async (docSnap) => {
-      await deleteDoc(doc(db, "users", user.uid, "wishlist", docSnap.id));
-    });
-  };
-
-  const isInWishlist = (productId) => {
-    return wishlist.some((item) => item.id === productId);
-  };
+  // Check if item is in wishlist
+  const isInWishlist = (id) => wishlist.some((item) => item.id === id);
 
   return (
-    <WishlistContext.Provider
-      value={{ wishlist, addToWishlist, removeFromWishlist, isInWishlist }}
-    >
+    <WishlistContext.Provider value={{ wishlist, toggleWishlist, isInWishlist }}>
       {children}
     </WishlistContext.Provider>
   );
