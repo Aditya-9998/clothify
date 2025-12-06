@@ -1,5 +1,4 @@
-// src/pages/AdminDashboard.jsx
-import { getAuth } from "firebase/auth";
+import { useEffect, useState } from "react";
 import {
   addDoc,
   collection,
@@ -7,37 +6,40 @@ import {
   doc,
   getDocs,
   Timestamp,
+  updateDoc,
 } from "firebase/firestore";
-import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
-import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
-import EditProduct from "../components/EditProduct";
-import { db, storage } from "../firebase";
+import "../styles/AdminDashboard.css";
+
+import { db } from "../firebase";
+import { uploadToCloudinary } from "../cloudinary/upload";
 
 const categoriesList = ["Men", "Women", "Kids", "Accessories"];
 
-const AdminDashboard = () => {
+export default function AdminDashboard() {
   const [products, setProducts] = useState([]);
+
+  // Add Product
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
   const [quantity, setQuantity] = useState("");
   const [imageFile, setImageFile] = useState(null);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [editingProduct, setEditingProduct] = useState(null);
+
+  // Edit Product States
+  const [editMode, setEditMode] = useState(false);
+  const [editProduct, setEditProduct] = useState(null);
+  const [editImageFile, setEditImageFile] = useState(null);
 
   const fetchProducts = async () => {
     try {
-      // ✅ FIX: Correct collection name "Products"
-      const snapshot = await getDocs(collection(db, "Products"));
-      const data = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
+      const snap = await getDocs(collection(db, "Products"));
+      const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
       setProducts(data);
     } catch (err) {
-      toast.error("Failed to fetch products.");
-      console.error("Fetch error:", err);
+      console.error(err);
+      toast.error("Failed to fetch products");
     }
   };
 
@@ -45,19 +47,27 @@ const AdminDashboard = () => {
     fetchProducts();
   }, []);
 
+  // Toggle category selection
+  const toggleCategory = (cat, mode = "add") => {
+    if (mode === "edit") {
+      setEditProduct((prev) => {
+        const updated = prev.categories.includes(cat)
+          ? prev.categories.filter((c) => c !== cat)
+          : [...prev.categories, cat];
+        return { ...prev, categories: updated };
+      });
+    } else {
+      setCategories((prev) =>
+        prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat]
+      );
+    }
+  };
+
+  // Add product
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     if (!name.trim() || !price || !quantity || categories.length === 0) {
-      toast.error("Please fill in all the fields and select category.");
-      return;
-    }
-
-    const auth = getAuth();
-    const user = auth.currentUser;
-
-    if (!user) {
-      toast.error("You must be logged in as admin.");
+      toast.error("Fill all fields and choose category");
       return;
     }
 
@@ -65,24 +75,18 @@ const AdminDashboard = () => {
       setLoading(true);
       let imageUrl = "";
 
-      if (imageFile) {
-        const fileName = `${Date.now()}_${imageFile.name}`;
-        const imageRef = ref(storage, `products/${fileName}`);
-        await uploadBytes(imageRef, imageFile);
-        imageUrl = await getDownloadURL(imageRef);
-      }
+      if (imageFile) imageUrl = await uploadToCloudinary(imageFile);
 
-      // ✅ FIX: Save inside "Products"
       await addDoc(collection(db, "Products"), {
         name: name.trim(),
-        price: parseFloat(price),
-        quantity: parseInt(quantity),
+        price: Number(price),
+        quantity: Number(quantity),
         image: imageUrl,
         categories,
         createdAt: Timestamp.now(),
       });
 
-      toast.success("✅ Product added successfully!");
+      toast.success("Product added ✔");
       setName("");
       setPrice("");
       setQuantity("");
@@ -90,140 +94,238 @@ const AdminDashboard = () => {
       setCategories([]);
       fetchProducts();
     } catch (err) {
-      console.error("Upload error:", err);
-      toast.error("❌ Failed to upload product.");
+      console.error(err);
+      toast.error("Upload failed");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDelete = async (id) => {
+  // Start Editing
+  const startEdit = (product) => {
+    setEditProduct(product);
+    setEditMode(true);
+  };
+
+  // Save Edited Data
+  const saveEdit = async () => {
+    if (!editProduct.name || !editProduct.price || !editProduct.quantity) {
+      toast.error("Fill all fields");
+      return;
+    }
+
     try {
-      // ✅ FIX: Delete from "Products"
-      await deleteDoc(doc(db, "Products", id));
-      toast.success("🗑️ Product deleted.");
+      setLoading(true);
+
+      let imageUrl = editProduct.image;
+
+      if (editImageFile) {
+        imageUrl = await uploadToCloudinary(editImageFile);
+      }
+
+      await updateDoc(doc(db, "Products", editProduct.id), {
+        name: editProduct.name,
+        price: Number(editProduct.price),
+        quantity: Number(editProduct.quantity),
+        categories: editProduct.categories,
+        image: imageUrl,
+      });
+
+      toast.success("Product Updated ✔");
+      setEditMode(false);
+      setEditImageFile(null);
       fetchProducts();
     } catch (err) {
-      console.error("Delete error:", err);
-      toast.error("❌ Failed to delete.");
+      console.error(err);
+      toast.error("Update failed");
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleEdit = (product) => {
-    setEditingProduct(product);
-  };
-
-  const toggleCategory = (cat) => {
-    if (cat === "Kids" || cat === "Accessories") {
-      setCategories([cat]);
-    } else {
-      const newCats = categories.filter((c) => c !== "Kids" && c !== "Accessories");
-      if (categories.includes(cat)) {
-        setCategories(newCats.filter((c) => c !== cat));
-      } else {
-        setCategories([...newCats, cat]);
-      }
+  // Delete product
+  const handleDelete = async (id) => {
+    try {
+      await deleteDoc(doc(db, "Products", id));
+      toast.success("Deleted successfully");
+      fetchProducts();
+    } catch (err) {
+      console.error(err);
+      toast.error("Delete failed");
     }
   };
 
   return (
-    <div className="p-6 min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
-      <h2 className="text-3xl font-bold text-indigo-700 dark:text-white mb-4">
-        Admin Dashboard
-      </h2>
+    <div className="p-8 bg-gray-50 min-h-screen">
+      <h2 className="text-3xl font-bold mb-6 text-indigo-700">Admin Dashboard</h2>
 
       {/* Add Product Form */}
-      <form onSubmit={handleSubmit} className="space-y-4 mb-8 max-w-md">
-        <input
-          type="text"
-          placeholder="Product Name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          className="w-full border px-4 py-2 rounded dark:bg-gray-800 dark:border-gray-600 dark:text-white"
-        />
-        <input
-          type="number"
-          placeholder="Price (₹)"
-          value={price}
-          onChange={(e) => setPrice(e.target.value)}
-          className="w-full border px-4 py-2 rounded dark:bg-gray-800 dark:border-gray-600 dark:text-white"
-        />
-        <input
-          type="number"
-          placeholder="Quantity"
-          value={quantity}
-          onChange={(e) => setQuantity(e.target.value)}
-          className="w-full border px-4 py-2 rounded dark:bg-gray-800 dark:border-gray-600 dark:text-white"
-        />
-        <input
-          type="file"
-          accept="image/*"
-          onChange={(e) => setImageFile(e.target.files[0])}
-          className="w-full"
-        />
+      <div className="bg-white p-6 rounded-xl shadow-md max-w-lg mb-10">
+        <h3 className="text-xl font-semibold mb-4">Add New Product</h3>
+        <form className="space-y-4" onSubmit={handleSubmit}>
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Product Name"
+            className="w-full border px-3 py-2 rounded"
+          />
+          <input
+            value={price}
+            onChange={(e) => setPrice(e.target.value)}
+            placeholder="Price"
+            type="number"
+            className="w-full border px-3 py-2 rounded"
+          />
+          <input
+            value={quantity}
+            onChange={(e) => setQuantity(e.target.value)}
+            placeholder="Quantity"
+            type="number"
+            className="w-full border px-3 py-2 rounded"
+          />
 
-        {/* Category Selection */}
-        <div className="mb-2">
-          <h3 className="font-medium mb-1 text-gray-700 dark:text-gray-200">Category</h3>
-          <div className="flex gap-2 flex-wrap">
+          <input
+            type="file"
+            accept="image/*"
+            onChange={(e) => setImageFile(e.target.files?.[0] || null)}
+          />
+
+          <div className="flex flex-wrap gap-2">
             {categoriesList.map((cat) => (
               <button
-                key={cat}
                 type="button"
+                key={cat}
                 onClick={() => toggleCategory(cat)}
-                className={`px-4 py-2 rounded transition ${
+                className={`px-3 py-1 rounded ${
                   categories.includes(cat)
                     ? "bg-indigo-600 text-white"
-                    : "bg-gray-200 dark:bg-gray-700 dark:text-gray-200 hover:bg-gray-300"
+                    : "bg-gray-200"
                 }`}
               >
                 {cat}
               </button>
             ))}
           </div>
-        </div>
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 disabled:opacity-50"
-        >
-          {loading ? "Uploading..." : "➕ Add Product"}
-        </button>
-      </form>
+          <button
+            disabled={loading}
+            type="submit"
+            className="bg-indigo-600 text-white px-4 py-2 rounded w-full"
+          >
+            {loading ? "Uploading..." : "Add Product"}
+          </button>
+        </form>
+      </div>
+
+      {/* Edit Product POPUP */}
+      {editMode && (
+        <div className="fixed inset-0 bg-black/40 flex justify-center items-center z-50">
+          <div className="bg-white p-6 rounded-xl w-96 shadow-xl">
+            <h3 className="text-xl font-bold mb-4 text-indigo-700">
+              Edit Product
+            </h3>
+
+            <input
+              value={editProduct.name}
+              onChange={(e) =>
+                setEditProduct({ ...editProduct, name: e.target.value })
+              }
+              className="w-full border px-3 py-2 rounded mb-3"
+            />
+            <input
+              value={editProduct.price}
+              type="number"
+              onChange={(e) =>
+                setEditProduct({ ...editProduct, price: e.target.value })
+              }
+              className="w-full border px-3 py-2 rounded mb-3"
+            />
+            <input
+              value={editProduct.quantity}
+              type="number"
+              onChange={(e) =>
+                setEditProduct({ ...editProduct, quantity: e.target.value })
+              }
+              className="w-full border px-3 py-2 rounded mb-3"
+            />
+
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => setEditImageFile(e.target.files?.[0] || null)}
+              className="mb-3"
+            />
+
+            <div className="flex flex-wrap gap-2 mb-4">
+              {categoriesList.map((cat) => (
+                <button
+                  type="button"
+                  key={cat}
+                  onClick={() => toggleCategory(cat, "edit")}
+                  className={`px-3 py-1 rounded ${
+                    editProduct.categories.includes(cat)
+                      ? "bg-indigo-600 text-white"
+                      : "bg-gray-200"
+                  }`}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setEditMode(false)}
+                className="px-4 py-2 bg-gray-400 text-white rounded"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={saveEdit}
+                className="px-4 py-2 bg-green-600 text-white rounded"
+              >
+                Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Product List */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-        {products.map((product) => (
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+        {products.map((p) => (
           <div
-            key={product.id}
-            className="border rounded p-4 shadow dark:bg-gray-800 dark:border-gray-700"
+            key={p.id}
+            className="bg-white p-4 rounded-xl shadow border hover:shadow-xl transition"
           >
-            {product.image && (
-              <img
-                src={product.image}
-                alt={product.name}
-                className="w-full h-48 object-cover rounded mb-2"
-              />
-            )}
-            <h3 className="text-lg font-bold dark:text-white">{product.name}</h3>
-            <p className="dark:text-gray-300">₹{product.price}</p>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              Qty: {product.quantity}
-            </p>
-            <p className="text-sm mt-1">
-              Categories: {product.categories?.join(", ")}
-            </p>
-            <div className="mt-2 flex gap-2">
+            <img
+              src={p.image}
+              alt={p.name}
+              className="w-full h-48 object-cover rounded mb-3"
+            />
+            <h3 className="font-bold text-lg">{p.name}</h3>
+            <p className="text-indigo-700 font-semibold">₹{p.price}</p>
+            <p className="text-gray-600 text-sm">Qty: {p.quantity}</p>
+            <p className="text-sm">Categories: {p.categories?.join(", ")}</p>
+
+            <div className="mt-3 flex gap-2">
               <button
-                onClick={() => handleEdit(product)}
-                className="px-3 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600"
+                onClick={() => navigator.clipboard.writeText(p.id)}
+                className="px-3 py-1 bg-gray-300 rounded"
+              >
+                Copy ID
+              </button>
+
+              <button
+                onClick={() => startEdit(p)}
+                className="px-3 py-1 bg-blue-600 text-white rounded"
               >
                 Edit
               </button>
+
               <button
-                onClick={() => handleDelete(product.id)}
-                className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700"
+                onClick={() => handleDelete(p.id)}
+                className="px-3 py-1 bg-red-600 text-white rounded"
               >
                 Delete
               </button>
@@ -231,22 +333,6 @@ const AdminDashboard = () => {
           </div>
         ))}
       </div>
-
-      {/* Edit Modal */}
-      {editingProduct && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <EditProduct
-            product={editingProduct}
-            onClose={() => setEditingProduct(null)}
-            onUpdate={() => {
-              setEditingProduct(null);
-              fetchProducts();
-            }}
-          />
-        </div>
-      )}
     </div>
   );
-};
-
-export default AdminDashboard;
+}

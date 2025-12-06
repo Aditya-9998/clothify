@@ -1,14 +1,20 @@
+//home.jsx
+
+
 import { Link } from "react-router-dom";
-import tshirtImg from "../assets/T-shirt.webp";
-import jacketImg from "../assets/danim.webp";
-import jeansImg from "../assets/jeans.webp";
-import "./Home.css"; // 👈 extra CSS for dots & animation
+import "./Home.css";
+
+const tshirtImg = "/assets/T-shirt.webp";
+const jacketImg = "/assets/danim.webp";
+const jeansImg = "/assets/jeans.webp";
 
 const categories = [
   { id: 1, name: "T-Shirts", img: tshirtImg },
   { id: 2, name: "Jackets", img: jacketImg },
   { id: 3, name: "Jeans", img: jeansImg },
 ];
+
+
 
 const Home = () => {
   return (
