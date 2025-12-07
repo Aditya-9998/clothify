@@ -1,20 +1,17 @@
 {
-  "name": "server",
+  "name": "clothify-server",
   "version": "1.0.0",
   "type": "module",
-  "main": "firebase-admin.js",
+  "main": "server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node server.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": "",
   "dependencies": {
     "cors": "^2.8.5",
     "dotenv": "^17.2.2",
     "express": "^5.1.0",
     "firebase-admin": "^13.5.0",
-    "razorpay": "^2.9.6"
+    "razorpay": "^2.9.6",
+    "uuid": "^9.0.1"
   }
 }
