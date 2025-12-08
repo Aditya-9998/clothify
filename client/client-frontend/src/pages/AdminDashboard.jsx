@@ -9,8 +9,9 @@ import {
   updateDoc,
 } from "firebase/firestore";
 import toast from "react-hot-toast";
-import "../../styles/AdminDashboard.css";
 
+// ✅ FINAL WORKING IMPORT PATH
+import "../styles/AdminDashboard.css";
 
 import { db } from "../firebase";
 import { uploadToCloudinary } from "../cloudinary/upload";
@@ -218,13 +219,11 @@ export default function AdminDashboard() {
         </form>
       </div>
 
-      {/* Edit Product POPUP */}
+      {/* EDIT POPUP */}
       {editMode && (
         <div className="fixed inset-0 bg-black/40 flex justify-center items-center z-50">
           <div className="bg-white p-6 rounded-xl w-96 shadow-xl">
-            <h3 className="text-xl font-bold mb-4 text-indigo-700">
-              Edit Product
-            </h3>
+            <h3 className="text-xl font-bold mb-4 text-indigo-700">Edit Product</h3>
 
             <input
               value={editProduct.name}
@@ -233,6 +232,7 @@ export default function AdminDashboard() {
               }
               className="w-full border px-3 py-2 rounded mb-3"
             />
+
             <input
               value={editProduct.price}
               type="number"
@@ -241,6 +241,7 @@ export default function AdminDashboard() {
               }
               className="w-full border px-3 py-2 rounded mb-3"
             />
+
             <input
               value={editProduct.quantity}
               type="number"
@@ -281,6 +282,7 @@ export default function AdminDashboard() {
               >
                 Cancel
               </button>
+
               <button
                 onClick={saveEdit}
                 className="px-4 py-2 bg-green-600 text-white rounded"
@@ -304,6 +306,7 @@ export default function AdminDashboard() {
               alt={p.name}
               className="w-full h-48 object-cover rounded mb-3"
             />
+
             <h3 className="font-bold text-lg">{p.name}</h3>
             <p className="text-indigo-700 font-semibold">₹{p.price}</p>
             <p className="text-gray-600 text-sm">Qty: {p.quantity}</p>
