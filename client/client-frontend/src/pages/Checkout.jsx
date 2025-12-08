@@ -1,7 +1,5 @@
 //Checkout.jsx
 
-
-
 import React, { useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { useCart } from "../contexts/CartContext";
@@ -40,6 +38,9 @@ const Checkout = () => {
     }
   };
 
+  // ----------------------------
+  // HANDLE RAZORPAY PAYMENT
+  // ----------------------------
   const handlePayment = async () => {
     if (!user) return alert("⚠️ Please login first.");
     if (!formData.name || !formData.address || !formData.phone)
@@ -52,26 +53,30 @@ const Checkout = () => {
       // Load Razorpay SDK
       const ok = await loadRazorpayScript();
       if (!ok) {
-        alert("Razorpay SDK failed to load.");
+        alert("❌ Razorpay SDK failed to load.");
         setLoading(false);
         return;
       }
 
-      // Create Razorpay order on backend
-      const response = await fetch("http://localhost:5000/api/create-order", {
+      // Backend API URL
+      const API_URL = import.meta.env.VITE_API_BASE_URL;
+
+      // Create order from backend
+      const response = await fetch(`${API_URL}/api/create-order`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ amount: discountedTotal }),
       });
 
       const order = await response.json();
+
       if (!order.id) {
-        alert("Failed to create order on backend");
+        alert("❌ Failed to create order on backend");
         setLoading(false);
         return;
       }
 
-      // Razorpay Checkout Options
+      // RAZORPAY OPTIONS
       const options = {
         key: import.meta.env.VITE_RAZORPAY_KEY,
         amount: order.amount,
@@ -81,7 +86,7 @@ const Checkout = () => {
         order_id: order.id,
 
         handler: async function (paymentResponse) {
-          // Save order into Firestore
+          // Save to Firestore
           await addDoc(collection(db, "orders"), {
             uid: user.uid,
             userEmail: user.email,
@@ -106,14 +111,17 @@ const Checkout = () => {
           email: user.email,
           contact: formData.phone,
         },
-        theme: { color: "#4F46E5" },
+
+        theme: {
+          color: "#4F46E5",
+        },
       };
 
       const paymentObject = new window.Razorpay(options);
       paymentObject.open();
     } catch (error) {
       console.error(error);
-      alert("Something went wrong.");
+      alert("❌ Something went wrong.");
     }
 
     setLoading(false);
@@ -123,29 +131,37 @@ const Checkout = () => {
     <div className="p-6 max-w-lg mx-auto bg-white rounded-lg shadow">
       <h2 className="text-2xl font-bold mb-4 text-center">Checkout</h2>
 
-      {/* User Form */}
-      <input className="border w-full p-2 mb-2"
+      {/* User Details */}
+      <input
+        className="border w-full p-2 mb-2"
         placeholder="Full Name"
         value={formData.name}
-        onChange={(e) => setFormData({ ...formData, name: e.target.value })} />
+        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+      />
 
-      <input className="border w-full p-2 mb-2"
+      <input
+        className="border w-full p-2 mb-2"
         placeholder="Address"
         value={formData.address}
-        onChange={(e) => setFormData({ ...formData, address: e.target.value })} />
+        onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+      />
 
-      <input className="border w-full p-2 mb-2"
+      <input
+        className="border w-full p-2 mb-2"
         placeholder="Phone Number"
         value={formData.phone}
-        onChange={(e) => setFormData({ ...formData, phone: e.target.value })} />
+        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+      />
 
       {/* Promo Code */}
       <div className="flex gap-2 mt-3">
-        <input className="border p-2 flex-1"
+        <input
+          className="border p-2 flex-1"
           placeholder="Promo Code"
           value={promoCode}
           disabled={promoApplied}
-          onChange={(e) => setPromoCode(e.target.value)} />
+          onChange={(e) => setPromoCode(e.target.value)}
+        />
 
         <button
           onClick={applyPromo}
@@ -156,7 +172,7 @@ const Checkout = () => {
         </button>
       </div>
 
-      {/* Order Summary */}
+      {/* Summary */}
       <div className="mt-4 p-4 bg-gray-100 rounded">
         <h3 className="font-semibold">Order Summary</h3>
         {cartItems.map((item) => (

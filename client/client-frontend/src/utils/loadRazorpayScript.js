@@ -1,3 +1,6 @@
+
+//clothify/client/frontedloadRazorpayScript.js
+
 export async function loadRazorpayScript() {
   return new Promise((resolve) => {
     if (document.getElementById("razorpay-sdk")) {
