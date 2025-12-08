@@ -9,7 +9,7 @@ import {
   updateDoc,
 } from "firebase/firestore";
 import toast from "react-hot-toast";
-import "../styles/AdminDashboard.css";
+import "../../styles/AdminDashboard.css";
 
 
 import { db } from "../firebase";
