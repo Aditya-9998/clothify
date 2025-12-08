@@ -1,5 +1,4 @@
-
-//shop.jsx
+// Shop.jsx
 
 import { collection, getDocs } from "firebase/firestore";
 import { useEffect, useState } from "react";
@@ -7,18 +6,6 @@ import { Link } from "react-router-dom";
 import { useCart } from "../contexts/CartContext";
 import { useWishlist } from "../contexts/WishlistContext";
 import { db } from "../firebase";
-
-// Local fallback images
-const tshirtImg = "/assets/T-shirt.webp";
-const jeansImg = "/assets/jeans.webp";
-const jacketImg = "/assets/danim.webp";
-
-// Default local items
-const defaultProducts = [
-  { id: "local-1", name: "T-Shirt", price: 499, image: tshirtImg, quantity: 5, categories: ["Men", "Women"] },
-  { id: "local-2", name: "Jeans", price: 999, image: jeansImg, quantity: 2, categories: ["Men", "Women"] },
-  { id: "local-3", name: "Jacket", price: 1499, image: jacketImg, quantity: 988, categories: ["Women"] },
-];
 
 const itemsPerPage = 9;
 
@@ -35,7 +22,7 @@ export default function Shop() {
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedCategory, setSelectedCategory] = useState("");
 
-  // Fetch Firestore products
+  // Fetch products from Firestore only
   useEffect(() => {
     async function fetchAdminProducts() {
       try {
@@ -53,7 +40,7 @@ export default function Shop() {
     fetchAdminProducts();
   }, []);
 
-  const allProducts = [...defaultProducts, ...adminProducts];
+  const allProducts = [...adminProducts]; // 🔥 Only Firestore products
 
   // Filtering logic
   const filtered = allProducts.filter((product) => {
@@ -73,7 +60,7 @@ export default function Shop() {
     return matchesSearch && matchesCategory && matchesPrice;
   });
 
-  // Sorting logic
+  // Sorting
   const sorted = [...filtered].sort((a, b) => {
     if (sortOrder === "lowToHigh") return a.price - b.price;
     if (sortOrder === "highToLow") return b.price - a.price;
@@ -87,7 +74,6 @@ export default function Shop() {
 
   return (
     <div className="p-8 bg-gray-50 min-h-screen">
-      {/* Title */}
       <h2 className="text-4xl font-extrabold text-center text-indigo-700 tracking-wide mb-10">
         Shop Our Collection
       </h2>
@@ -155,7 +141,7 @@ export default function Shop() {
         </select>
       </div>
 
-      {/* Custom Price Range */}
+      {/* Custom Price Inputs */}
       {priceRange === "custom" && (
         <div className="flex justify-center gap-4 mb-8">
           <input
@@ -175,7 +161,7 @@ export default function Shop() {
         </div>
       )}
 
-      {/* PRODUCT GRID */}
+      {/* Products Grid */}
       <div className="grid gap-8 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-3">
         {paginated.map((product) => {
           const cartItem = cartItems.find((i) => i.id === product.id);
@@ -203,7 +189,6 @@ export default function Shop() {
               {outOfStock && <p className="text-red-600 font-medium">Out of Stock</p>}
               {maxReached && <p className="text-yellow-600 font-medium">Max Limit Reached</p>}
 
-              {/* Add to Cart */}
               <button
                 disabled={outOfStock || maxReached}
                 onClick={() => addToCart(product)}
@@ -218,7 +203,6 @@ export default function Shop() {
                 {outOfStock ? "Out of Stock" : maxReached ? "Max Limit" : "Add to Cart"}
               </button>
 
-              {/* Wishlist */}
               <button
                 onClick={() => toggleWishlist(product)}
                 className={`w-full mt-3 py-2 rounded-lg font-medium flex justify-center items-center gap-2 

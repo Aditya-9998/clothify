@@ -14,9 +14,12 @@ export default function Cart() {
   );
 
   const handlePayment = async () => {
+    console.log("Initializing Razorpay Checkout…");
+
     const res = await loadRazorpayScript();
     if (!res) {
-      alert("Razorpay SDK failed to load");
+      alert("Razorpay SDK failed to load ❌");
+      console.error("Razorpay SDK failed to load");
       return;
     }
 
@@ -26,20 +29,37 @@ export default function Cart() {
       currency: "INR",
       name: "Clothify",
       description: "Order Payment",
+
       handler: async function (response) {
-        await addDoc(collection(db, "orders"), {
-          userEmail: user?.email,
-          items: cartItems,
-          total: totalAmount,
-          paymentId: response.razorpay_payment_id,
-          status: "Paid",
-          createdAt: serverTimestamp(),
-        });
+        console.log("Payment Success Response:", response);
+        console.log("Razorpay Payment ID:", response.razorpay_payment_id);
+
+        try {
+          await addDoc(collection(db, "orders"), {
+            userEmail: user?.email || "Guest User",
+            items: cartItems,
+            total: totalAmount,
+            paymentId: response.razorpay_payment_id,
+            status: "Paid",
+            createdAt: serverTimestamp(),
+          });
+
+          console.log("ORDER SUCCESSFULLY SAVED IN FIREBASE ✔🔥");
+          alert("Order Saved Successfully in Firebase ✔");
+        } catch (err) {
+          console.error("Error Saving Order ❌", err);
+          alert("Order Save Failed ❌");
+        }
 
         clearCart();
         alert("Payment Successful!");
       },
-      theme: { color: "#2874F0" }, // Flipkart blue
+
+      prefill: {
+        email: user?.email || "test@example.com",
+      },
+
+      theme: { color: "#2874F0" },
     };
 
     const paymentObj = new window.Razorpay(options);
@@ -50,7 +70,7 @@ export default function Cart() {
     <div className="min-h-screen bg-gray-100 py-8">
       <div className="max-w-5xl mx-auto flex flex-col md:flex-row gap-6">
 
-        {/* LEFT: Cart items */}
+        {/* LEFT SIDE CART ITEMS */}
         <div className="flex-1 bg-white p-6 shadow rounded-lg">
           <h2 className="text-2xl font-bold mb-4 border-b pb-2">Your Cart</h2>
 
@@ -81,7 +101,6 @@ export default function Cart() {
                   </div>
                 </div>
 
-                {/* Remove Button */}
                 <button
                   onClick={() => removeFromCart(item.id)}
                   className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600"
@@ -102,7 +121,7 @@ export default function Cart() {
           )}
         </div>
 
-        {/* RIGHT: Price Summary Box */}
+        {/* RIGHT SIDE PRICE SUMMARY */}
         {cartItems.length > 0 && (
           <div className="w-full md:w-80 bg-white p-6 shadow rounded-lg h-fit sticky top-4">
             <h3 className="text-xl font-semibold mb-4 border-b pb-2">
